@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Blow the Candle!</title>
+    <style>
+        body {
+            background-color: #fff5f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        #birthday-card {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 900px;
+            width: 90%;
+        }
+
+        /* FLICKERING CANDLE */
+        @keyframes flicker {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05) rotate(1deg); }
+            100% { transform: scale(1); }
+        }
+
+        #candle {
+            font-size: 100px;
+            display: inline-block;
+            animation: flicker 0.5s infinite;
+        }
+
+        #secret-note { display: none; }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .gallery img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            border-radius: 15px;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .reveal-img { opacity: 1 !important; transform: scale(1) !important; }
+
+        h1 { color: #ff477e; }
+        #mic-status { color: #888; font-size: 0.9rem; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="birthday-card">
+    <div id="candle-section">
+        <div id="candle">🕯️</div>
+        <h2 id="instruction">Blow into the mic to make a wish!</h2>
+        <button id="startBtn" style="padding: 10px 20px; cursor:pointer; border-radius: 20px; border:none; background:#ff477e; color:white;">Enable Microphone</button>
+        <p id="mic-status">Waiting for permission...</p>
+    </div>
+
+    <div id="secret-note">
+        <h1>Happy Birthday! 🥳</h1>
+        <p>“home.”</p>
+        <div class="gallery">
+            <img src="https://lh3.googleusercontent.com/u/0/d/1R5q0vo0p6ncf_RIc8GL2B9sVKc0uoN6L" alt="P1">
+            <img src="https://lh3.googleusercontent.com/u/0/d/19HupzupkoW_dIkovH0PGOH1P7DsA4OY4" alt="P2">
+            <img src="https://lh3.googleusercontent.com/u/0/d/1AgH9aUNeCrTfDZ7sN8N2HksV0w8g4i-Z" alt="P3">
+            <img src="https://lh3.googleusercontent.com/u/0/d/1vQAdn3QQ12a4XfGltNsgofkXyK_8idZR" alt="P4">
+            <img src="https://lh3.googleusercontent.com/u/0/d/1fDsD7uglmJvfEwffONn2SKUfeESjDciR" alt="P5">
+            <img src="https://lh3.googleusercontent.com/u/0/d/1RIxNktukUyXqdXrN6WKh9GH_k9lVzLeR" alt="P6">
+        </div>
+    </div>
+</div>
+
+<script>
+    const startBtn = document.getElementById('startBtn');
+    const micStatus = document.getElementById('mic-status');
+
+    startBtn.onclick = function() {
+        startBtn.style.display = 'none';
+        micStatus.innerText = "Listening for your blow...";
+        initAudio();
+    };
+
+    async function initAudio() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioContext.createAnalyser();
+            const microphone = audioContext.createMediaStreamSource(stream);
+            
+            analyser.fftSize = 512;
+            microphone.connect(analyser);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            function checkVolume() {
+                analyser.getByteFrequencyData(dataArray);
+                let values = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    values += dataArray[i];
+                }
+                let average = values / dataArray.length;
+
+                // Threshold: If average volume is high (blowing sound)
+                if (average > 50) { 
+                    triggerReveal();
+                    stream.getTracks().forEach(track => track.stop()); // Turn off mic
+                    return;
+                }
+                requestAnimationFrame(checkVolume);
+            }
+            checkVolume();
+        } catch (err) {
+            micStatus.innerText = "Error: Mic access denied.";
+        }
+    }
+
+    function triggerReveal() {
+        document.getElementById('candle').innerHTML = "💨";
+        setTimeout(() => {
+            document.getElementById('candle-section').style.display = 'none';
+            document.getElementById('secret-note').style.display = 'block';
+            
+            const images = document.querySelectorAll('.gallery img');
+            images.forEach((img, index) => {
+                setTimeout(() => img.classList.add('reveal-img'), index * 300);
+            });
+        }, 600);
+    }
+</script>
+
+</body>
+</html>
